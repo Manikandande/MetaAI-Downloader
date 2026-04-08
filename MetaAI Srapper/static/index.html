@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meta AI Video Downloader</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 540px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #0066ff, #00c6ff);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 20px;
+    }
+
+    h1 { font-size: 1.4rem; color: #1a1a2e; font-weight: 700; }
+    .subtitle { color: #888; font-size: 0.9rem; margin-bottom: 28px; margin-top: 4px; }
+
+    label { display: block; font-size: 0.85rem; font-weight: 600; color: #444; margin-bottom: 6px; }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 0.95rem;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      outline: none;
+      transition: border 0.2s;
+      color: #222;
+    }
+    input[type="text"]:focus { border-color: #0066ff; }
+
+    button {
+      margin-top: 14px;
+      width: 100%;
+      padding: 13px;
+      font-size: 1rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #0066ff, #00c6ff);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    button:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+    button:active:not(:disabled) { transform: translateY(0); }
+    button:disabled { background: #b0bec5; cursor: not-allowed; }
+
+    .status-box {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: none;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .status-box.visible { display: flex; }
+    .status-box.info    { background: #e8f0fe; color: #1a56db; }
+    .status-box.success { background: #e6f4ea; color: #1e7e34; }
+    .status-box.error   { background: #fdecea; color: #c62828; }
+
+    .status-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+
+    .meta-box {
+      margin-top: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 0.85rem;
+      color: #555;
+      display: none;
+    }
+    .meta-box.visible { display: block; }
+    .meta-box span { font-weight: 600; color: #222; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">&#9660;</div>
+      <h1>Meta AI Video Downloader</h1>
+    </div>
+    <p class="subtitle">Paste a Meta AI "Copy Link" URL to download the video.</p>
+
+    <label for="url">Video Share URL</label>
+    <input type="text" id="url" placeholder="https://www.meta.ai/s/..." autocomplete="off" />
+
+    <button id="btn" onclick="handleSubmit()">Download Video</button>
+
+    <div class="status-box" id="status-box">
+      <div id="status-icon" class="status-icon"></div>
+      <div id="status-text"></div>
+    </div>
+
+    <div class="meta-box" id="meta-box">
+      <div id="meta-content"></div>
+    </div>
+  </div>
+
+  <script>
+    function setStatus(msg, type) {
+      const box = document.getElementById("status-box");
+      const icon = document.getElementById("status-icon");
+      const text = document.getElementById("status-text");
+
+      box.className = "status-box visible " + (type || "info");
+      text.textContent = msg;
+
+      if (type === "loading") {
+        icon.innerHTML = '<span class="spinner"></span>';
+        box.className = "status-box visible info";
+      } else if (type === "success") {
+        icon.textContent = "✓";
+      } else if (type === "error") {
+        icon.textContent = "✕";
+      } else {
+        icon.textContent = "ℹ";
+      }
+    }
+
+    function showMeta(title, source, filesize) {
+      const box = document.getElementById("meta-box");
+      const content = document.getElementById("meta-content");
+      let html = `Title: <span>${title}</span><br>`;
+      html += `Extracted via: <span>${source}</span>`;
+      if (filesize) {
+        const mb = (filesize / 1024 / 1024).toFixed(1);
+        html += `<br>Size: <span>${mb} MB</span>`;
+      }
+      content.innerHTML = html;
+      box.className = "meta-box visible";
+    }
+
+    function hideMeta() {
+      document.getElementById("meta-box").className = "meta-box";
+    }
+
+    async function handleSubmit() {
+      const url = document.getElementById("url").value.trim();
+      if (!url) { setStatus("Please enter a URL.", "error"); return; }
+
+      const btn = document.getElementById("btn");
+      btn.disabled = true;
+      hideMeta();
+      setStatus("Analyzing link — this may take up to 30 seconds...", "loading");
+
+      try {
+        const res = await fetch("/api/info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          setStatus("Error: " + (data.error || res.statusText), "error");
+          return;
+        }
+
+        showMeta(data.title, data.source, data.filesize);
+        setStatus("Video found! Starting download...", "loading");
+
+        const params = new URLSearchParams({
+          video_url: data.video_url,
+          title: data.title,
+          ext: data.ext || "mp4"
+        });
+        window.location.href = "/api/download?" + params.toString();
+
+        setTimeout(() => setStatus("Download started! Check your Downloads folder.", "success"), 2000);
+
+      } catch (err) {
+        setStatus("Unexpected error: " + err.message, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // Allow Enter key to submit
+    document.getElementById("url").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") handleSubmit();
+    });
+  </script>
+</body>
+</html>

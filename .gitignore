@@ -1,0 +1,7 @@
+node/
+MetaAI-Downloader/node_modules/
+MetaAI-Downloader/android/
+MetaAI-Downloader/.expo/
+__pycache__/
+*.pyc
+.env
