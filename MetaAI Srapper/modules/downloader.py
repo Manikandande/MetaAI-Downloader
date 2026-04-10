@@ -1,3 +1,4 @@
+import os
 import re
 import requests
 from flask import Response, stream_with_context
@@ -11,8 +12,40 @@ def _safe_filename(title: str, ext: str) -> str:
     return f"{safe}.{ext}"
 
 
+def stream_local_file(filepath: str, title: str, ext: str) -> Response:
+    """Stream a locally downloaded file and delete it afterwards."""
+    filename = _safe_filename(title, ext)
+    filesize = os.path.getsize(filepath)
+
+    def generate():
+        try:
+            with open(filepath, "rb") as f:
+                while True:
+                    chunk = f.read(CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    yield chunk
+        finally:
+            # Clean up temp file and its parent temp directory
+            try:
+                os.remove(filepath)
+                tmpdir = os.path.dirname(filepath)
+                if tmpdir.startswith(os.path.join(os.path.sep, "tmp")) or \
+                   "metaai_" in os.path.basename(tmpdir):
+                    os.rmdir(tmpdir)
+            except Exception:
+                pass
+
+    headers = {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Type": f"video/{ext}",
+        "Content-Length": str(filesize),
+    }
+    return Response(stream_with_context(generate()), headers=headers, status=200)
+
+
 def stream_video(video_url: str, title: str, ext: str) -> Response:
-    # Try HEAD to get content-length; some CDNs reject it — that's fine
+    """Stream video directly from a remote URL."""
     content_length = None
     content_type = f"video/{ext}"
     try:
@@ -37,8 +70,4 @@ def stream_video(video_url: str, title: str, ext: str) -> Response:
     if content_length:
         headers["Content-Length"] = content_length
 
-    return Response(
-        stream_with_context(generate()),
-        headers=headers,
-        status=200,
-    )
+    return Response(stream_with_context(generate()), headers=headers, status=200)

@@ -127,6 +127,11 @@
     <label for="url">Video Share URL</label>
     <input type="text" id="url" placeholder="https://www.meta.ai/s/..." autocomplete="off" />
 
+    <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-weight:500;cursor:pointer;">
+      <input type="checkbox" id="instagram" style="width:16px;height:16px;cursor:pointer;">
+      Optimize for Instagram (upscale to 1080p)
+    </label>
+
     <button id="btn" onclick="handleSubmit()">Download Video</button>
 
     <div class="status-box" id="status-box">
@@ -181,6 +186,7 @@
       const url = document.getElementById("url").value.trim();
       if (!url) { setStatus("Please enter a URL.", "error"); return; }
 
+      const instagram = document.getElementById("instagram").checked;
       const btn = document.getElementById("btn");
       btn.disabled = true;
       hideMeta();
@@ -200,14 +206,19 @@
         }
 
         showMeta(data.title, data.source, data.filesize);
-        setStatus("Video found! Starting download...", "loading");
+        const statusMsg = instagram
+          ? "Upscaling to 1080p for Instagram — please wait..."
+          : "Video found! Starting download...";
+        setStatus(statusMsg, "loading");
 
-        const params = new URLSearchParams({
-          video_url: data.video_url,
-          title: data.title,
-          ext: data.ext || "mp4"
-        });
-        window.location.href = "/api/download?" + params.toString();
+        const dlParams = { title: data.title, ext: data.ext || "mp4" };
+        if (data.download_key) {
+          dlParams.download_key = data.download_key;
+        } else {
+          dlParams.video_url = data.video_url;
+        }
+        if (instagram) dlParams.instagram = "true";
+        window.location.href = "/api/download?" + new URLSearchParams(dlParams).toString();
 
         setTimeout(() => setStatus("Download started! Check your Downloads folder.", "success"), 2000);
 
